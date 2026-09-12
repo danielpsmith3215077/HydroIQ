@@ -36,6 +36,16 @@ function percentile(sorted: number[], p: number) {
   return sorted[lo] * (hi - i) + sorted[hi] * (i - lo);
 }
 
+function engineeringRange(flowGpd: number, durationDays: number) {
+  const gallons = flowGpd * durationDays;
+  const trailerDays = Math.max(1, Math.ceil(gallons / AMFS.capacityGpd));
+  return {
+    low: trailerDays * 12_000,
+    high: trailerDays * 28_000,
+    trailerDays,
+  };
+}
+
 export async function suggestBidRange(organizationId: string, inputs: BidInputs): Promise<BidSuggestion> {
   const rows = await prisma.bidComparable.findMany({
     where: { organizationId },
@@ -43,48 +53,49 @@ export async function suggestBidRange(organizationId: string, inputs: BidInputs)
   });
 
   const contaminant = (inputs.contaminant ?? "").toLowerCase();
-  const filtered = rows.filter((r) => {
-    if (!contaminant) return true;
-    const hay = `${r.title} ${r.keywords} ${r.description}`.toLowerCase();
-    return hay.includes(contaminant) || hay.includes("water") || hay.includes("remediat");
+  const waterish = rows.filter((r) => {
+    const hay = `${r.title} ${r.keywords} ${r.description} ${r.naics ?? ""}`.toLowerCase();
+    if (r.awardAmount < 25_000 || r.awardAmount > 2_500_000) return false;
+    if (contaminant && hay.includes(contaminant)) return true;
+    return /water|filtr|remediat|pfas|wastewater|leachate|562910|221310/.test(hay);
   });
-  const pool: BidComparable[] = filtered.length >= 4 ? filtered : rows;
-  const amounts = pool.map((r) => r.awardAmount).filter((n) => n > 10_000 && n < 500_000_000);
 
-  let low = percentile(amounts, 0.25);
-  let high = percentile(amounts, 0.75);
-  const historicalMin = amounts[0] ?? 0;
-  const historicalMax = amounts[amounts.length - 1] ?? 0;
+  const eng =
+    inputs.flowGpd && inputs.durationDays
+      ? engineeringRange(inputs.flowGpd, inputs.durationDays)
+      : null;
 
-  if (inputs.flowGpd && inputs.durationDays) {
-    const gallons = inputs.flowGpd * inputs.durationDays;
-    const trailerDays = Math.ceil(gallons / AMFS.capacityGpd);
-    const dayRateLow = 12_000;
-    const dayRateHigh = 28_000;
-    const engLow = trailerDays * dayRateLow;
-    const engHigh = trailerDays * dayRateHigh;
-    if (amounts.length) {
-      low = Math.round((low + engLow) / 2);
-      high = Math.round((high + engHigh) / 2);
-    } else {
-      low = engLow;
-      high = engHigh;
+  const band = waterish.filter((r) => {
+    if (!eng) return true;
+    return r.awardAmount >= eng.low * 0.25 && r.awardAmount <= eng.high * 6;
+  });
+  const pool: BidComparable[] = band.length ? band : waterish;
+  const amounts = pool.map((r) => r.awardAmount).sort((a, b) => a - b);
+
+  let low = 75_000;
+  let high = 450_000;
+  if (eng) {
+    low = eng.low;
+    high = eng.high;
+    if (amounts.length >= 3) {
+      const p25 = percentile(amounts, 0.25);
+      const p75 = percentile(amounts, 0.75);
+      low = Math.round((eng.low + p25) / 2);
+      high = Math.round((eng.high + p75) / 2);
     }
+  } else if (amounts.length) {
+    low = percentile(amounts, 0.25);
+    high = percentile(amounts, 0.75);
   }
 
-  if (!amounts.length && !inputs.flowGpd) {
-    low = 75_000;
-    high = 450_000;
-  }
+  const historicalMin = amounts[0] ?? low;
+  const historicalMax = amounts[amounts.length - 1] ?? high;
 
   let warning: string | null = null;
-  if (inputs.proposedBid && high && inputs.proposedBid > high * 1.05) {
-    warning =
-      "⚠️ Bid Exceeds Historical Maximum — Highly likely to lose on price";
-    if (historicalMax && inputs.proposedBid > historicalMax) {
-      warning =
-        "⚠️ Bid Exceeds Historical Maximum — Highly likely to lose on price";
-    }
+  if (inputs.proposedBid && high && inputs.proposedBid > Math.max(high, historicalMax) * 1.02) {
+    warning = "⚠️ Bid Exceeds Historical Maximum — Highly likely to lose on price";
+  } else if (inputs.proposedBid && high && inputs.proposedBid > high) {
+    warning = "⚠️ Bid Exceeds suggested high — check the comparable awards before you submit.";
   }
 
   return {
@@ -93,7 +104,9 @@ export async function suggestBidRange(organizationId: string, inputs: BidInputs)
     historicalMin: Math.round(historicalMin),
     historicalMax: Math.round(historicalMax),
     warning,
-    note: "Data-informed estimate from comparable federal awards and AMFS trailer throughput — not a guaranteed win number. Open the comparables list before you hang a price on it.",
+    note: eng
+      ? `Advisory range from AMFS trailer throughput (${eng.trailerDays} trailer-day${eng.trailerDays === 1 ? "" : "s"} at up to ${AMFS.capacityGpd.toLocaleString()} gpd) blended with federal awards in a similar dollar band. Not a guaranteed win number.`
+      : "Advisory range from comparable federal water/remediation awards under $2.5M. Not a guaranteed win number. Enter flow and duration for a trailer-day estimate.",
     comparables: pool.slice(-12).reverse().map((r) => ({
       id: r.id,
       title: r.title,
