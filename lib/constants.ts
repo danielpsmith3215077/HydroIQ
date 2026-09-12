@@ -21,6 +21,7 @@ export const AMFS = {
 export const ORG_SLUG = "amfs";
 export const SESSION_COOKIE = "hydroiq_session";
 
+/** Core AMFS territories — extra ECHO pagination budget. */
 export const PRIORITY_STATES = [
   "TX",
   "MN",
@@ -44,6 +45,61 @@ export const PRIORITY_STATES = [
   "IA",
 ] as const;
 
+/** National ECHO coverage (50 states + DC). */
+export const ALL_US_STATES = [
+  "AL",
+  "AK",
+  "AZ",
+  "AR",
+  "CA",
+  "CO",
+  "CT",
+  "DE",
+  "DC",
+  "FL",
+  "GA",
+  "HI",
+  "ID",
+  "IL",
+  "IN",
+  "IA",
+  "KS",
+  "KY",
+  "LA",
+  "ME",
+  "MD",
+  "MA",
+  "MI",
+  "MN",
+  "MS",
+  "MO",
+  "MT",
+  "NE",
+  "NV",
+  "NH",
+  "NJ",
+  "NM",
+  "NY",
+  "NC",
+  "ND",
+  "OH",
+  "OK",
+  "OR",
+  "PA",
+  "RI",
+  "SC",
+  "SD",
+  "TN",
+  "TX",
+  "UT",
+  "VT",
+  "VA",
+  "WA",
+  "WV",
+  "WI",
+  "WY",
+] as const;
+
 export const SOURCE_LABELS: Record<string, string> = {
   echo_cwa: "ECHO · CWA",
   echo_sdwa: "ECHO · SDWIS",
@@ -55,6 +111,7 @@ export const SOURCE_LABELS: Record<string, string> = {
   e_amlis: "e-AMLIS",
   srf: "SRF",
   tceq: "TCEQ",
+  mpca: "MPCA · WIMN",
 };
 
 export const VARIANT_LABELS: Record<string, string> = {

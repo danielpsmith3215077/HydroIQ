@@ -27,7 +27,7 @@ export async function alertMaintainer(source: string, message: string, extra?: s
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          from: "HydroIQ Alerts <alerts@hydroiq.local>",
+          from: process.env.RESEND_FROM ?? "HydroIQ Alerts <onboarding@resend.dev>",
           to: [email],
           subject: `[HydroIQ] ${source} ingestion failed`,
           text: body,

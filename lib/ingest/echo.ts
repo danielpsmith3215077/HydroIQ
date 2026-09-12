@@ -1,4 +1,4 @@
-import { PRIORITY_STATES } from "../constants";
+import { ALL_US_STATES, PRIORITY_STATES } from "../constants";
 import { fetchJson } from "../http";
 import { detectContaminantClass } from "../scoring";
 import { parseNumber, parsePenalty, titleCase } from "../utils";
@@ -61,14 +61,19 @@ async function mapPool<T, R>(items: readonly T[], size: number, fn: (item: T) =>
   return out;
 }
 
+function echoPages(st: string): number {
+  if (PRIORITY_STATES.includes(st as (typeof PRIORITY_STATES)[number])) return 2;
+  return 1;
+}
+
 export async function fetchEchoCwa(): Promise<DraftLead[]> {
-  const perState = await mapPool([...PRIORITY_STATES], 5, async (st) => {
+  const perState = await mapPool([...ALL_US_STATES], 8, async (st) => {
     const leads: DraftLead[] = [];
     try {
     const { facilities } = await echoQuery(
       "cwa_rest_services",
       { p_st: st, p_act: "Y", p_pccs: "SNC", qcolumns: CWA_COLS },
-      st === "TX" || st === "MN" ? 3 : 1,
+      st === "TX" || st === "MN" ? 3 : echoPages(st),
     );
     let kept = 0;
     const ranked = facilities
@@ -194,12 +199,12 @@ export async function fetchEchoCwa(): Promise<DraftLead[]> {
     return leads;
   });
   const all = perState.flat();
-  if (!all.length) throw new Error("ECHO CWA returned no SNC facilities across priority states");
+  if (!all.length) throw new Error("ECHO CWA returned no SNC facilities across U.S. states");
   return all;
 }
 
 export async function fetchEchoSdwa(): Promise<DraftLead[]> {
-  const perState = await mapPool([...PRIORITY_STATES], 5, async (st) => {
+  const perState = await mapPool([...ALL_US_STATES], 8, async (st) => {
     const leads: DraftLead[] = [];
     try {
     const start = await fetchJson<EchoResults>(
@@ -279,7 +284,7 @@ export async function fetchEchoSdwa(): Promise<DraftLead[]> {
     return leads;
   });
   const all = perState.flat();
-  if (!all.length) throw new Error("ECHO SDWA returned no serious violators across priority states");
+  if (!all.length) throw new Error("ECHO SDWA returned no serious violators across U.S. states");
   return all;
 }
 

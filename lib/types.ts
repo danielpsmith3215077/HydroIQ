@@ -10,7 +10,8 @@ export type LeadSource =
   | "pfas_watchlist"
   | "e_amlis"
   | "srf"
-  | "tceq";
+  | "tceq"
+  | "mpca";
 
 export type DraftLead = {
   source: LeadSource;

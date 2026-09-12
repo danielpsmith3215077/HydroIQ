@@ -4,7 +4,7 @@ import { fetchEchoCwa, fetchEchoRcra, fetchEchoSdwa } from "./echo";
 import { fetchSuperfund } from "./superfund";
 import { fetchSamOpportunities, fetchUsaSpendingAwards, storeComparables } from "./contracts";
 import { amlisLeads, seedPfasWatchlist } from "./watchlists";
-import { fetchSrf, fetchTceq } from "./states";
+import { fetchMnpca, fetchSrf, fetchTceq } from "./states";
 import { upsertLeads } from "./upsert";
 import { runAlgorithmA, runAlgorithmB, runAlgorithmC } from "./forecast";
 import type { DraftLead } from "../types";
@@ -82,6 +82,7 @@ export async function runIngestion(organizationId: string) {
   results.push(await runSource(organizationId, "e_amlis", async () => amlisLeads()));
   results.push(await runSource(organizationId, "tceq", fetchTceq, { allowEmpty: true }));
   results.push(await runSource(organizationId, "srf", fetchSrf, { allowEmpty: true }));
+  results.push(await runSource(organizationId, "mpca", fetchMnpca, { allowEmpty: true }));
 
   const startedAt = new Date();
   try {
