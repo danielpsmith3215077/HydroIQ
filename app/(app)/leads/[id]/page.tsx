@@ -4,7 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { EmailPanel } from "@/components/email-panel";
 import { BidPanel } from "@/components/bid-panel";
 import { SourceBadge, VariantBadge } from "@/components/lead-badge";
-import { formatDate, formatMoney, locationLine, titleCase } from "@/lib/utils";
+import { formatDate, formatMoney, locationLine } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -30,7 +30,7 @@ export default async function LeadPage({ params }: { params: { id: string } }) {
         ))}
         <SourceBadge source={lead.source} />
       </div>
-      <h1 className="font-serif text-4xl text-navy">{titleCase(lead.facilityName) || lead.facilityName}</h1>
+      <h1 className="font-serif text-4xl text-navy">{lead.facilityName}</h1>
       <p className="text-navy/65">{locationLine(lead)}</p>
       {lead.address ? <p className="text-sm text-navy/55">{lead.address}{lead.zip ? ` ${lead.zip}` : ""}</p> : null}
 

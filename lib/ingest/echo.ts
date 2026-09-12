@@ -16,6 +16,7 @@ type EchoResults = {
     QueryRows?: string;
     Error?: { ErrorMessage?: string };
     Facilities?: Record<string, string | null>[];
+    WaterSystems?: Record<string, string | null>[];
   };
 };
 
@@ -207,10 +208,10 @@ export async function fetchEchoSdwa(): Promise<DraftLead[]> {
     if (start.Results?.Error?.ErrorMessage) throw new Error(start.Results.Error.ErrorMessage);
     const qid = start.Results?.QueryID;
     if (!qid) return leads;
-    const page = await fetchJson<EchoResults>(
+    const pg = await fetchJson<EchoResults>(
       `https://echodata.epa.gov/echo/sdw_rest_services.get_qid?output=JSON&qid=${qid}&pageno=1&qcolumns=${SDWA_COLS}`,
     );
-    const facilities = page.Results?.Facilities ?? [];
+    const facilities = pg.Results?.WaterSystems ?? pg.Results?.Facilities ?? [];
     let kept = 0;
     for (const f of facilities) {
       const name = f.PWSName?.trim();
@@ -302,7 +303,6 @@ export async function fetchEchoRcra(): Promise<DraftLead[]> {
           `https://echodata.epa.gov/echo/rcra_rest_services.get_facilities?${qs}`,
         );
         if (first.Results?.Error?.ErrorMessage) {
-          lastErr = first.Results.Error.ErrorMessage;
           continue;
         }
         const qid = first.Results?.QueryID;

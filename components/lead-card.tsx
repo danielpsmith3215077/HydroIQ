@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { VariantBadge, SourceBadge } from "./lead-badge";
-import { formatDate, formatMoney, locationLine, titleCase } from "@/lib/utils";
+import { formatDate, formatMoney, locationLine } from "@/lib/utils";
 import type { Lead } from "@prisma/client";
 
 export function LeadCard({ lead }: { lead: Lead }) {
@@ -22,7 +22,7 @@ export function LeadCard({ lead }: { lead: Lead }) {
           </span>
         ) : null}
       </div>
-      <h3 className="mt-3 font-serif text-xl text-navy md:text-2xl">{titleCase(lead.facilityName) || lead.facilityName}</h3>
+      <h3 className="mt-3 font-serif text-xl text-navy md:text-2xl">{lead.facilityName}</h3>
       <p className="mt-1 text-sm font-medium text-navy/60">{locationLine(lead)}</p>
       <p className="mt-3 line-clamp-3 text-sm leading-relaxed text-navy/80">{lead.summary}</p>
       <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-semibold uppercase tracking-wider text-navy/50">
