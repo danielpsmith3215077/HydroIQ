@@ -23,7 +23,11 @@ fi
 mkdir -p data
 npm install
 npx prisma generate
-npx prisma db push
+if [[ "${DATABASE_URL:-}" == postgres* ]]; then
+  npx prisma migrate deploy
+else
+  echo "Set DATABASE_URL (and DIRECT_URL) in .env to your Supabase URI, then run: npx prisma migrate deploy"
+fi
 echo ""
 echo "Ready. Start the app: npm run dev"
 echo "Open http://127.0.0.1:43180 — login from AUTH_USERNAME / AUTH_PASSWORD in .env"

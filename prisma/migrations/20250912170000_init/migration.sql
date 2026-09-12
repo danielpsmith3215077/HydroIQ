@@ -3,7 +3,7 @@ CREATE TABLE "Organization" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "slug" TEXT NOT NULL,
     "name" TEXT NOT NULL,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- CreateTable
@@ -13,8 +13,8 @@ CREATE TABLE "User" (
     "username" TEXT NOT NULL,
     "passwordHash" TEXT NOT NULL,
     "displayName" TEXT NOT NULL,
-    "lastLoginAt" DATETIME,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "lastLoginAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "User_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
@@ -28,7 +28,7 @@ CREATE TABLE "OrgSettings" (
     "emailSignoff" TEXT NOT NULL DEFAULT 'AMFS Filtration',
     "solutionUrl" TEXT NOT NULL DEFAULT 'https://amfsfiltration.com/technology/',
     "companyUrl" TEXT NOT NULL DEFAULT 'https://amfsfiltration.com/',
-    "updatedAt" DATETIME NOT NULL,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
     CONSTRAINT "OrgSettings_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
@@ -58,12 +58,12 @@ CREATE TABLE "Lead" (
     "sourceRecordId" TEXT NOT NULL,
     "registryId" TEXT,
     "permitId" TEXT,
-    "detectedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "eventDate" DATETIME,
+    "detectedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "eventDate" TIMESTAMP(3),
     "emailSubject" TEXT NOT NULL DEFAULT '',
     "emailBody" TEXT NOT NULL DEFAULT '',
     "emailTo" TEXT,
-    "emailSentAt" DATETIME,
+    "emailSentAt" TIMESTAMP(3),
     "unread" BOOLEAN NOT NULL DEFAULT true,
     "forecastWindow" TEXT,
     "primeContractor" TEXT,
@@ -72,8 +72,8 @@ CREATE TABLE "Lead" (
     "flowMgd" REAL,
     "badgesJson" TEXT NOT NULL DEFAULT '[]',
     "metadataJson" TEXT NOT NULL DEFAULT '{}',
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
     CONSTRAINT "Lead_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
@@ -84,8 +84,8 @@ CREATE TABLE "Notification" (
     "leadId" TEXT,
     "title" TEXT NOT NULL,
     "body" TEXT NOT NULL,
-    "readAt" DATETIME,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "readAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "Notification_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT "Notification_leadId_fkey" FOREIGN KEY ("leadId") REFERENCES "Lead" ("id") ON DELETE SET NULL ON UPDATE CASCADE
 );
@@ -97,7 +97,7 @@ CREATE TABLE "AuditLog" (
     "leadId" TEXT,
     "action" TEXT NOT NULL,
     "detail" TEXT,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "AuditLog_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT "AuditLog_leadId_fkey" FOREIGN KEY ("leadId") REFERENCES "Lead" ("id") ON DELETE SET NULL ON UPDATE CASCADE
 );
@@ -110,14 +110,14 @@ CREATE TABLE "BidComparable" (
     "recipient" TEXT,
     "agency" TEXT,
     "awardAmount" REAL NOT NULL,
-    "awardedAt" DATETIME,
+    "awardedAt" TIMESTAMP(3),
     "naics" TEXT,
     "state" TEXT,
     "sourceUrl" TEXT NOT NULL,
     "sourceRecordId" TEXT NOT NULL,
     "keywords" TEXT NOT NULL DEFAULT '',
     "description" TEXT NOT NULL DEFAULT '',
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "BidComparable_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
@@ -130,8 +130,8 @@ CREATE TABLE "SourceRun" (
     "recordsFound" INTEGER NOT NULL DEFAULT 0,
     "recordsCreated" INTEGER NOT NULL DEFAULT 0,
     "error" TEXT,
-    "startedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "finishedAt" DATETIME,
+    "startedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "finishedAt" TIMESTAMP(3),
     CONSTRAINT "SourceRun_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
@@ -147,7 +147,7 @@ CREATE TABLE "FacilitySnapshot" (
     "violationCount" INTEGER NOT NULL DEFAULT 1,
     "source" TEXT NOT NULL,
     "sourceRecordUrl" TEXT NOT NULL,
-    "updatedAt" DATETIME NOT NULL,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
     CONSTRAINT "FacilitySnapshot_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 

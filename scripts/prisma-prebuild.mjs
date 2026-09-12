@@ -6,5 +6,7 @@ const isPostgres = url.startsWith("postgres://") || url.startsWith("postgresql:/
 if (isPostgres) {
   execSync("npx prisma migrate deploy", { stdio: "inherit" });
 } else {
-  execSync("npx prisma db push", { stdio: "inherit" });
+  console.warn(
+    "[hydroiq] Skipping prisma migrate deploy: DATABASE_URL is not Postgres (required for production).",
+  );
 }

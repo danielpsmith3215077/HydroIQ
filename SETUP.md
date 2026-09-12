@@ -41,16 +41,21 @@ You can keep using SQLite locally; only Vercel needs Postgres.
 
 ## 3. Vercel (hosting + cron)
 
-1. [vercel.com](https://vercel.com) → **Add New → Project** → Import **HydroIQ** (GitHub/Origin connection as you prefer).
-2. Generate env vars (sample secrets):
+**Option A — one command (after secrets are set in your shell or Cursor):**
 
 ```bash
-./scripts/print-production-env.sh
+export DATABASE_URL="postgresql://..."   # Supabase direct URI, port 5432
+export VERCEL_TOKEN="..."                # vercel.com/account/tokens
+export AUTH_SECRET="..." AUTH_USERNAME=amfs AUTH_PASSWORD="..." CRON_SECRET="..."
+export MAINTAINER_EMAIL="you@example.com"
+npm run deploy:vercel
 ```
 
-3. Paste into **Vercel → Project → Settings → Environment Variables** (Production).
-4. Set real `DATABASE_URL` from Supabase and a strong `AUTH_PASSWORD`.
-5. Deploy. Build uses `prisma migrate deploy` automatically when `DATABASE_URL` is Postgres.
+**Option B — Vercel UI**
+
+1. [vercel.com](https://vercel.com) → **Add New → Project** → Import **HydroIQ**.
+2. `./scripts/print-production-env.sh` → paste into **Environment Variables** (Production).
+3. Deploy (build runs `prisma migrate deploy` when `DATABASE_URL` is Postgres).
 
 ## 4. After first deploy
 
