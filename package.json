@@ -1,6 +1,7 @@
 {
   "name": "hydroiq",
   "version": "1.0.0",
+  "description": "HydroIQ — AMFS internal lead intelligence (repo: HydroIQ)",
   "private": true,
   "scripts": {
     "dev": "next dev -H 0.0.0.0 -p 43180",

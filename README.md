@@ -1,5 +1,7 @@
 # HydroIQ
 
+**Repository name:** `HydroIQ` — use this exact name when you create the GitHub or Origin repo (Create repo in Cursor). The npm package is `hydroiq` (lowercase); that is intentional and separate from the repo name.
+
 Internal **lead intelligence and predictive procurement** tool for [Advanced Mobile Filtration Services (AMFS)](https://amfsfiltration.com/) in Fort Worth. It is a single-admin web app: open the link on iPhone, iPad, or desktop, review real public-record leads, edit the AMFS outreach draft, and mark it sent.
 
 HydroIQ is not a multi-tenant SaaS product. The database is org-scoped (`organizationId` on every table) for a clean Supabase Postgres cutover.
