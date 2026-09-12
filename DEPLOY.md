@@ -17,16 +17,20 @@ For a brand-new database, the initial migration lives in `prisma/migrations/`. I
 
 ## 2. Vercel environment variables
 
-| Variable | Required | Notes |
-| --- | --- | --- |
-| `DATABASE_URL` | Yes | Postgres URL in production |
-| `AUTH_SECRET` | Yes | Long random string (32+ chars) |
-| `AUTH_USERNAME` / `AUTH_PASSWORD` | Yes | **Change defaults** before go-live |
-| `CRON_SECRET` | Yes | Random bearer token; Vercel Cron sends `Authorization: Bearer …` |
-| `MAINTAINER_EMAIL` | Yes | Builder email for ingestion failures |
-| `RESEND_API_KEY` | Recommended | Enables email alerts |
-| `RESEND_FROM` | If using Resend | Verified sender, e.g. `HydroIQ <alerts@yourdomain.com>` |
-| `SAM_API_KEY` | Optional | Official SAM.gov opportunities API; USAspending still runs without it |
+
+| Variable                          | Required        | Notes                                                                 |
+| --------------------------------- | --------------- | --------------------------------------------------------------------- |
+| `DATABASE_URL`                    | Yes             | Postgres URL in production                                            |
+| `AUTH_SECRET`                     | Yes             | Long random string (32+ chars)                                        |
+| `AUTH_USERNAME` / `AUTH_PASSWORD` | Yes             | **Change defaults** before go-live                                    |
+| `CRON_SECRET`                     | Yes             | Random bearer token; Vercel Cron sends `Authorization: Bearer …`      |
+| `MAINTAINER_EMAIL`                | Yes             | Builder email for ingestion failures                                  |
+| `RESEND_API_KEY`                  | Recommended     | Enables email alerts                                                  |
+| `RESEND_FROM`                     | If using Resend | Verified sender, e.g. `HydroIQ <alerts@yourdomain.com>`               |
+| `SAM_API_KEY`                     | Optional        | Official SAM.gov opportunities API; USAspending still runs without it |
+
+
+
 
 ## 3. Cron
 
@@ -60,14 +64,16 @@ Set that in Vercel project settings when `DATABASE_URL` points to Postgres.
 
 ## 6. Data sources at ship
 
-| Source | Public record |
-| --- | --- |
-| EPA ECHO CWA / SDWA / RCRA | echodata.epa.gov |
-| Superfund SEMS | data.epa.gov DMAP |
-| SAM.gov + USAspending | sam.gov / api.usaspending.gov |
-| TCEQ | data.texas.gov administrative orders + EPIC docket links |
-| SRF | TWDB DWSRF PPL PDF + MN MPFA annual report Exhibit A |
-| MPCA | WIMN site-activities API (browser UA) |
-| e-AMLIS | OSMRE GeoMine AML Awards + curated backlog |
+
+| Source                     | Public record                                            |
+| -------------------------- | -------------------------------------------------------- |
+| EPA ECHO CWA / SDWA / RCRA | echodata.epa.gov                                         |
+| Superfund SEMS             | data.epa.gov DMAP                                        |
+| SAM.gov + USAspending      | sam.gov / api.usaspending.gov                            |
+| TCEQ                       | data.texas.gov administrative orders + EPIC docket links |
+| SRF                        | TWDB DWSRF PPL PDF + MN MPFA annual report Exhibit A     |
+| MPCA                       | WIMN site-activities API (browser UA)                    |
+| e-AMLIS                    | OSMRE GeoMine AML Awards + curated backlog               |
+
 
 Every lead row stores a `sourceRecordUrl` the operator can open from the lead detail screen.

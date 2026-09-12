@@ -1,6 +1,15 @@
 # HydroIQ
 
-**Repository name:** `HydroIQ` — use this exact name when you create the GitHub or Origin repo (Create repo in Cursor). The npm package is `hydroiq` (lowercase); that is intentional and separate from the repo name.
+**Repository:** [daniel-smith-code/HydroIQ](https://cursor.com/codebase/daniel-smith-code/HydroIQ) (private — change visibility on that page).
+
+```bash
+curl -fsSL https://downloads.cursor.com/origin/install.sh | sh
+origin auth login
+origin repo clone daniel-smith-code/HydroIQ
+cd HydroIQ && npm run setup && npm run dev
+```
+
+Full checklist (Supabase + Vercel): **[SETUP.md](./SETUP.md)**. Origin CLI: [docs](https://cursor.com/docs/origin/cli).
 
 Internal **lead intelligence and predictive procurement** tool for [Advanced Mobile Filtration Services (AMFS)](https://amfsfiltration.com/) in Fort Worth. It is a single-admin web app: open the link on iPhone, iPad, or desktop, review real public-record leads, edit the AMFS outreach draft, and mark it sent.
 
