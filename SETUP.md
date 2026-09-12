@@ -14,6 +14,14 @@ npm run dev
 
 Open [http://127.0.0.1:43180](http://127.0.0.1:43180). Log in with the username/password in `.env`.
 
+**Unstyled page (plain HTML, blue links)?** The dev server lost sync with `.next` (common after `npm run build` while `npm run dev` is running). Stop the dev server, then:
+
+```bash
+rm -rf .next && npm run dev
+```
+
+Hard-refresh the browser (Cmd+Shift+R).
+
 Optional: trigger first data pull while logged in → **Settings** → **Refresh sources** (or `POST /api/ingest`).
 
 ## 2. Supabase (production database)

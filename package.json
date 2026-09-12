@@ -5,6 +5,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev -H 0.0.0.0 -p 43180",
+    "dev:clean": "rm -rf .next && next dev -H 0.0.0.0 -p 43180",
     "build": "prisma generate && node scripts/prisma-prebuild.mjs && next build",
     "setup": "bash scripts/setup-local.sh",
     "start": "next start -H 0.0.0.0 -p 43180",
