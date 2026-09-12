@@ -1,0 +1,141 @@
+export const AMFS = {
+  legalName: "Advanced Mobile Filtration Services LLC",
+  shortName: "AMFS",
+  city: "Fort Worth",
+  state: "TX",
+  address: "6300 Ridglea Pl #1011, Fort Worth, TX 76116",
+  phone: "(800) 484-4590",
+  email: "info@amfsfiltration.com",
+  site: "https://amfsfiltration.com/",
+  technology: "https://amfsfiltration.com/technology/",
+  pfasCaseStudy:
+    "https://amfsfiltration.com/wp-content/uploads/2025/02/AMF_PFAS_removal_Air_Force_Base_Final-01.06.25.pdf",
+  cage: "8RVH1",
+  uei: "NFQ4E4H1KHN4",
+  naics: ["562910", "221310", "562998"],
+  trailer: "53-foot mobile nanofiltration trailer",
+  capacityGpd: 420_000,
+  mobilization: "72 hours to any U.S. site",
+} as const;
+
+export const ORG_SLUG = "amfs";
+export const SESSION_COOKIE = "hydroiq_session";
+
+export const PRIORITY_STATES = [
+  "TX",
+  "MN",
+  "OK",
+  "LA",
+  "AR",
+  "NM",
+  "KS",
+  "CO",
+  "CA",
+  "FL",
+  "WV",
+  "PA",
+  "OH",
+  "MI",
+  "NJ",
+  "NC",
+  "GA",
+  "AZ",
+  "WI",
+  "IA",
+] as const;
+
+export const SOURCE_LABELS: Record<string, string> = {
+  echo_cwa: "ECHO · CWA",
+  echo_sdwa: "ECHO · SDWIS",
+  echo_rcra: "ECHO · RCRA",
+  superfund: "Superfund",
+  sam_gov: "SAM.gov",
+  usaspending: "USAspending",
+  pfas_watchlist: "PFAS Watchlist",
+  e_amlis: "e-AMLIS",
+  srf: "SRF",
+  tceq: "TCEQ",
+};
+
+export const VARIANT_LABELS: Record<string, string> = {
+  live_violation: "Live Violation",
+  live_bid: "Live Bid",
+  predictive: "Predictive: Upcoming RFP",
+  subcontract: "Subcontract Opportunity",
+};
+
+export const AMFS_CONTAMINANTS = [
+  "pfas",
+  "pfoa",
+  "pfos",
+  "afff",
+  "lead",
+  "arsenic",
+  "selenium",
+  "mercury",
+  "boron",
+  "bromide",
+  "dioxane",
+  "radionuclide",
+  "radium",
+  "uranium",
+  "nitrate",
+  "ammonia",
+  "bod",
+  "tss",
+  "chloride",
+  "tds",
+  "glycol",
+  "leachate",
+  "coal ash",
+];
+
+export const PRIME_CONTRACTORS = [
+  "AECOM",
+  "Jacobs",
+  "Fluor",
+  "KBR",
+  "Leidos",
+  "Tetra Tech",
+  "CH2M",
+  "Bechtel",
+  "Parsons",
+  "Vectrus",
+  "Amentum",
+  "Kiewit",
+  "Granite",
+  "Bristol",
+  "HDR",
+  "Black & Veatch",
+  "CDM Smith",
+  "Wood PLC",
+  "Aptim",
+  "EA Engineering",
+];
+
+export const BOS_KEYWORDS = [
+  "base operations support",
+  "base operations",
+  "civil engineering",
+  "facilities support",
+  "environmental remediation",
+  "environmental services",
+  "operations and maintenance",
+  "O&M",
+  "umbrella",
+  "IDIQ",
+];
+
+export const WATER_KEYWORDS = [
+  "water treatment",
+  "wastewater",
+  "filtration",
+  "nanofiltration",
+  "PFAS",
+  "AFFF",
+  "remediation",
+  "groundwater",
+  "leachate",
+  "potable water",
+  "NPDES",
+];

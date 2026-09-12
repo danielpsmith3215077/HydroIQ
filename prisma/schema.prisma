@@ -1,0 +1,193 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Schemas are org-scoped so a later multi-tenant cutover is additive, not a rewrite.
+model Organization {
+  id             String           @id @default(cuid())
+  slug           String           @unique
+  name           String
+  createdAt      DateTime         @default(now())
+  users          User[]
+  leads          Lead[]
+  notifications  Notification[]
+  auditLogs      AuditLog[]
+  bidComparables BidComparable[]
+  sourceRuns     SourceRun[]
+  facilities     FacilitySnapshot[]
+  pfasSites      PfasSite[]
+  settings       OrgSettings?
+}
+
+model User {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  username       String       @unique
+  passwordHash   String
+  displayName    String
+  lastLoginAt    DateTime?
+  createdAt      DateTime     @default(now())
+}
+
+model OrgSettings {
+  id                 String       @id @default(cuid())
+  organizationId     String       @unique
+  organization       Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  emailFromName      String       @default("Advanced Mobile Filtration Services")
+  emailFromAddress   String       @default("info@amfsfiltration.com")
+  emailPhone         String       @default("(800) 484-4590")
+  emailSignoff       String       @default("AMFS Filtration")
+  solutionUrl        String       @default("https://amfsfiltration.com/technology/")
+  companyUrl         String       @default("https://amfsfiltration.com/")
+  updatedAt          DateTime     @updatedAt
+}
+
+model Lead {
+  id                 String       @id @default(cuid())
+  organizationId     String
+  organization       Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  source             String
+  variant            String       @default("live_violation")
+  status             String       @default("new")
+  facilityName       String
+  city               String?
+  county             String?
+  state              String
+  address            String?
+  zip                String?
+  latitude           Float?
+  longitude          Float?
+  summary            String
+  detail             String
+  contaminantClass   String?
+  violationType      String?
+  fineAmount         Float?
+  contractType       String?
+  estimatedValue     Float?
+  sourceRecordUrl    String
+  sourceRecordId     String
+  registryId         String?
+  permitId           String?
+  detectedAt         DateTime     @default(now())
+  eventDate          DateTime?
+  emailSubject       String       @default("")
+  emailBody          String       @default("")
+  emailTo            String?
+  emailSentAt        DateTime?
+  unread             Boolean      @default(true)
+  forecastWindow     String?
+  primeContractor    String?
+  score              Int          @default(0)
+  complianceHistory  String?
+  flowMgd            Float?
+  badgesJson         String       @default("[]")
+  metadataJson       String       @default("{}")
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+  notifications      Notification[]
+  auditLogs          AuditLog[]
+
+  @@unique([organizationId, source, sourceRecordId])
+  @@index([organizationId, detectedAt])
+  @@index([organizationId, status])
+  @@index([organizationId, score])
+}
+
+model Notification {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  leadId         String?
+  lead           Lead?        @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  title          String
+  body           String
+  readAt         DateTime?
+  createdAt      DateTime     @default(now())
+
+  @@index([organizationId, readAt])
+}
+
+model AuditLog {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  leadId         String?
+  lead           Lead?        @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  action         String
+  detail         String?
+  createdAt      DateTime     @default(now())
+
+  @@index([organizationId, createdAt])
+}
+
+model BidComparable {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  title          String
+  recipient      String?
+  agency         String?
+  awardAmount    Float
+  awardedAt      DateTime?
+  naics          String?
+  state          String?
+  sourceUrl      String
+  sourceRecordId String
+  keywords       String       @default("")
+  description    String       @default("")
+  createdAt      DateTime     @default(now())
+
+  @@unique([organizationId, sourceRecordId])
+}
+
+model SourceRun {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  source         String
+  status         String
+  recordsFound   Int          @default(0)
+  recordsCreated Int          @default(0)
+  error          String?
+  startedAt      DateTime     @default(now())
+  finishedAt     DateTime?
+
+  @@index([organizationId, source, startedAt])
+}
+
+model FacilitySnapshot {
+  id               String       @id @default(cuid())
+  organizationId   String
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  registryId       String
+  facilityName     String
+  state            String
+  contaminantClass String
+  periodKey        String
+  violationCount   Int          @default(1)
+  source           String
+  sourceRecordUrl  String
+  updatedAt        DateTime     @updatedAt
+
+  @@unique([organizationId, registryId, contaminantClass, periodKey])
+}
+
+model PfasSite {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name           String
+  city           String?
+  state          String
+  branch         String?
+  sourceUrl      String
+  notes          String?
+
+  @@unique([organizationId, name, state])
+}

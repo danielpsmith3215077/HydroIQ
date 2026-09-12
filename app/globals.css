@@ -1,0 +1,35 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --navy: #0c2d48;
+  --sand: #f3efe6;
+  --teal: #0f766e;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  background: var(--sand);
+  color: var(--navy);
+}
+
+input,
+textarea,
+button,
+select {
+  font-size: 16px;
+}
+
+@media (min-width: 768px) {
+  input,
+  textarea,
+  button,
+  select {
+    font-size: inherit;
+  }
+}
