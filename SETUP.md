@@ -24,6 +24,16 @@ Hard-refresh the browser (Cmd+Shift+R).
 
 Optional: trigger first data pull while logged in → **Settings** → **Refresh sources** (or `POST /api/ingest`).
 
+### If `prisma migrate deploy` fails with P1001 (can’t reach database)
+
+Your network or the Cloud Agent VM may block outbound port 5432. **Skip the CLI** and run SQL in the browser:
+
+1. In the repo, open **`scripts/supabase-init.sql`** (after `git pull`).
+2. Supabase → **SQL Editor** → **New query** → paste the full file → **Run**.
+3. **Table Editor** should list `Lead`, `Organization`, etc.
+
+Alternatively: set `DATABASE_URL` on **Vercel** and **Redeploy** — the build runs `prisma migrate deploy` from Vercel’s network (usually works).
+
 ## 2. Supabase (production database)
 
 1. [supabase.com](https://supabase.com) → New project (any name, e.g. `hydroiq`).
