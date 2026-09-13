@@ -45,6 +45,9 @@ export const PRIORITY_STATES = [
   "IA",
 ] as const;
 
+/** First-pull subset — finishes inside a Vercel function before the feed looks empty. */
+export const BOOTSTRAP_STATES = ["TX", "MN", "OK", "LA", "CA", "FL", "OH", "PA"] as const;
+
 /** National ECHO coverage (50 states + DC). */
 export const ALL_US_STATES = [
   "AL",

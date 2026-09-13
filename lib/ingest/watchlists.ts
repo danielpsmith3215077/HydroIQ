@@ -25,4 +25,4 @@ export async function seedPfasWatchlist(organizationId: string) {
   }
 }
 
-export { fetchAmlisLeads as amlisLeads } from "./amlis";
+export { fetchAmlisLeads as amlisLeads, staticAmlisLeads } from "./amlis";

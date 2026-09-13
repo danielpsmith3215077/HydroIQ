@@ -88,6 +88,11 @@ function staticLeads(): DraftLead[] {
   }));
 }
 
+/** Curated AML list only — used for the fast first-pull path. */
+export async function staticAmlisLeads(): Promise<DraftLead[]> {
+  return staticLeads();
+}
+
 export async function fetchAmlisLeads(): Promise<DraftLead[]> {
   const byId = new Map<string, DraftLead>();
   for (const lead of staticLeads()) {

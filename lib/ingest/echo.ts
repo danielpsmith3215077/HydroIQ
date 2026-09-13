@@ -20,9 +20,25 @@ type EchoResults = {
   };
 };
 
-async function echoQuery(path: string, params: Record<string, string>, pages = 2) {
+export type EchoFetchOpts = {
+  states?: readonly string[];
+  concurrency?: number;
+  timeoutMs?: number;
+  /** Cap pagination (bootstrap uses 1). */
+  maxPages?: number;
+  includePenalties?: boolean;
+};
+
+async function echoQuery(
+  path: string,
+  params: Record<string, string>,
+  pages = 2,
+  timeoutMs = 28000,
+) {
   const qs = new URLSearchParams({ output: "JSON", responseset: "50", ...params });
-  const first = await fetchJson<EchoResults>(`https://echodata.epa.gov/echo/${path}.get_facilities?${qs}`);
+  const first = await fetchJson<EchoResults>(`https://echodata.epa.gov/echo/${path}.get_facilities?${qs}`, {
+    timeoutMs,
+  });
   const results = first.Results;
   if (results?.Error?.ErrorMessage) throw new Error(results.Error.ErrorMessage);
   const qid = results?.QueryID;
@@ -32,6 +48,7 @@ async function echoQuery(path: string, params: Record<string, string>, pages = 2
   for (let page = 1; page <= pages; page += 1) {
     const pg = await fetchJson<EchoResults>(
       `https://echodata.epa.gov/echo/${qpath}?output=JSON&qid=${qid}&pageno=${page}&qcolumns=${params.qcolumns ?? ""}`,
+      { timeoutMs },
     );
     const rows = pg.Results?.Facilities ?? [];
     if (!rows.length) break;
@@ -66,14 +83,22 @@ function echoPages(st: string): number {
   return 1;
 }
 
-export async function fetchEchoCwa(): Promise<DraftLead[]> {
-  const perState = await mapPool([...ALL_US_STATES], 8, async (st) => {
+export async function fetchEchoCwa(opts: EchoFetchOpts = {}): Promise<DraftLead[]> {
+  const states = opts.states?.length ? [...opts.states] : [...ALL_US_STATES];
+  const concurrency = opts.concurrency ?? 8;
+  const timeoutMs = opts.timeoutMs ?? 28000;
+  const includePenalties = opts.includePenalties !== false;
+  const errors: string[] = [];
+  const perState = await mapPool(states, concurrency, async (st) => {
     const leads: DraftLead[] = [];
     try {
+    const defaultPages = st === "TX" || st === "MN" ? 3 : echoPages(st);
+    const pages = opts.maxPages ? Math.min(opts.maxPages, defaultPages) : defaultPages;
     const { facilities } = await echoQuery(
       "cwa_rest_services",
       { p_st: st, p_act: "Y", p_pccs: "SNC", qcolumns: CWA_COLS },
-      st === "TX" || st === "MN" ? 3 : echoPages(st),
+      pages,
+      timeoutMs,
     );
     let kept = 0;
     const ranked = facilities
@@ -154,11 +179,12 @@ export async function fetchEchoCwa(): Promise<DraftLead[]> {
       kept += 1;
     }
 
-    if (st === "TX" || st === "MN") {
+    if (includePenalties && (st === "TX" || st === "MN")) {
       const penalized = await echoQuery(
         "cwa_rest_services",
         { p_st: st, p_pen: "LE12", qcolumns: CWA_COLS },
         1,
+        timeoutMs,
       );
       for (const f of penalized.facilities.slice(0, 12)) {
         const name = f.CWPName?.trim();
@@ -193,28 +219,42 @@ export async function fetchEchoCwa(): Promise<DraftLead[]> {
         });
       }
     }
-    } catch {
+    } catch (err) {
+      errors.push(`${st}: ${err instanceof Error ? err.message : String(err)}`);
       return leads;
     }
     return leads;
   });
   const all = perState.flat();
-  if (!all.length) throw new Error("ECHO CWA returned no SNC facilities across U.S. states");
+  if (!all.length) {
+    const detail = errors.slice(0, 4).join(" · ");
+    throw new Error(
+      detail
+        ? `ECHO CWA returned no SNC facilities (${detail})`
+        : "ECHO CWA returned no SNC facilities across requested states",
+    );
+  }
   return all;
 }
 
-export async function fetchEchoSdwa(): Promise<DraftLead[]> {
-  const perState = await mapPool([...ALL_US_STATES], 8, async (st) => {
+export async function fetchEchoSdwa(opts: EchoFetchOpts = {}): Promise<DraftLead[]> {
+  const states = opts.states?.length ? [...opts.states] : [...ALL_US_STATES];
+  const concurrency = opts.concurrency ?? 8;
+  const timeoutMs = opts.timeoutMs ?? 28000;
+  const errors: string[] = [];
+  const perState = await mapPool(states, concurrency, async (st) => {
     const leads: DraftLead[] = [];
     try {
     const start = await fetchJson<EchoResults>(
       `https://echodata.epa.gov/echo/sdw_rest_services.get_systems?output=JSON&p_st=${st}&p_sv=Y&responseset=40&qcolumns=${SDWA_COLS}`,
+      { timeoutMs },
     );
     if (start.Results?.Error?.ErrorMessage) throw new Error(start.Results.Error.ErrorMessage);
     const qid = start.Results?.QueryID;
     if (!qid) return leads;
     const pg = await fetchJson<EchoResults>(
       `https://echodata.epa.gov/echo/sdw_rest_services.get_qid?output=JSON&qid=${qid}&pageno=1&qcolumns=${SDWA_COLS}`,
+      { timeoutMs },
     );
     const facilities = pg.Results?.WaterSystems ?? pg.Results?.Facilities ?? [];
     let kept = 0;
@@ -278,13 +318,21 @@ export async function fetchEchoSdwa(): Promise<DraftLead[]> {
       });
       kept += 1;
     }
-    } catch {
+    } catch (err) {
+      errors.push(`${st}: ${err instanceof Error ? err.message : String(err)}`);
       return leads;
     }
     return leads;
   });
   const all = perState.flat();
-  if (!all.length) throw new Error("ECHO SDWA returned no serious violators across U.S. states");
+  if (!all.length) {
+    const detail = errors.slice(0, 4).join(" · ");
+    throw new Error(
+      detail
+        ? `ECHO SDWA returned no serious violators (${detail})`
+        : "ECHO SDWA returned no serious violators across requested states",
+    );
+  }
   return all;
 }
 

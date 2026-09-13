@@ -109,7 +109,8 @@ export default async function FeedPage({
         <div className="mt-8 rounded-2xl border border-dashed border-navy/20 bg-white px-6 py-16 text-center">
           <h2 className="font-serif text-2xl text-navy">Waiting on the first public-records pull</h2>
           <p className="mx-auto mt-2 max-w-md text-sm text-navy/65">
-            HydroIQ never invents leads. The first EPA ECHO sweep is running now. If this sits empty for more than a couple of minutes, tap Refresh sources.
+            HydroIQ never invents leads. The first EPA ECHO sweep is running now. If this sits empty for more than a couple of minutes, tap{" "}
+            <span className="font-semibold text-navy">Load live leads</span>.
           </p>
         </div>
       ) : (

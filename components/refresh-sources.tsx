@@ -13,10 +13,15 @@ export function RefreshSources({ empty }: { empty: boolean }) {
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch("/api/ingest", { method: "POST" });
+      const mode = empty ? "bootstrap" : "full";
+      const res = await fetch(`/api/ingest?mode=${mode}`, { method: "POST" });
+      const j = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const j = await res.json().catch(() => ({}));
         throw new Error(j.error || "Refresh failed");
+      }
+      if (empty) {
+        // Continue national coverage after the feed has something to show.
+        void fetch("/api/ingest?mode=full", { method: "POST", keepalive: true }).catch(() => undefined);
       }
       router.refresh();
     } catch (err) {
@@ -33,7 +38,9 @@ export function RefreshSources({ empty }: { empty: boolean }) {
       </Button>
       {busy ? (
         <p className="max-w-xs text-right text-xs text-navy/55">
-          EPA ECHO can take a minute. The feed fills in as each source lands — this is a live pull, not a sample file.
+          {empty
+            ? "Pulling EPA ECHO for priority states first — the feed should fill within about a minute."
+            : "EPA ECHO can take a minute. The feed fills in as each source lands — this is a live pull, not a sample file."}
         </p>
       ) : null}
       {error ? <p className="text-xs text-red-700">{error}</p> : null}
