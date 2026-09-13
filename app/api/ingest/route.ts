@@ -6,9 +6,17 @@ export const maxDuration = 300;
 export const dynamic = "force-dynamic";
 
 export async function POST() {
-  await ensureAdmin();
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const results = await runIngestion(session.orgId);
-  return NextResponse.json({ ok: true, results });
+  try {
+    await ensureAdmin();
+    const results = await runIngestion(session.orgId);
+    return NextResponse.json({ ok: true, results });
+  } catch (err) {
+    console.error("[ingest] failed", err);
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Ingest failed" },
+      { status: 503 },
+    );
+  }
 }

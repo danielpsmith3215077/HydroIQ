@@ -1,4 +1,4 @@
-import { prisma } from "../prisma";
+import { withDb } from "../prisma";
 import { alertMaintainer, recordRun } from "../alerts";
 import { fetchEchoCwa, fetchEchoRcra, fetchEchoSdwa } from "./echo";
 import { fetchSuperfund } from "./superfund";
@@ -113,11 +113,13 @@ export async function runIngestion(organizationId: string) {
 }
 
 export async function latestSourceHealth(organizationId: string) {
-  const runs = await prisma.sourceRun.findMany({
-    where: { organizationId },
-    orderBy: { startedAt: "desc" },
-    take: 40,
-  });
+  const runs = await withDb((db) =>
+    db.sourceRun.findMany({
+      where: { organizationId },
+      orderBy: { startedAt: "desc" },
+      take: 40,
+    }),
+  );
   const bySource = new Map<string, (typeof runs)[number]>();
   for (const run of runs) {
     if (!bySource.has(run.source)) bySource.set(run.source, run);

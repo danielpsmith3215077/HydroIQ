@@ -1,33 +1,25 @@
 import { NextResponse } from "next/server";
-import { createSession, ensureAdmin, verifyPassword } from "@/lib/auth";
+import { createSession, loginWithSitePassword } from "@/lib/auth";
+
+export const dynamic = "force-dynamic";
+export const maxDuration = 30;
 
 export async function POST(req: Request) {
   try {
-    await ensureAdmin();
-    const body = (await req.json()) as { password?: string; username?: string };
-    const password = body.password;
-    if (!password) {
-      return NextResponse.json({ error: "Enter the site password." }, { status: 400 });
-    }
-    const user = await verifyPassword(password);
-    if (!user) {
-      return NextResponse.json(
-        { error: "Wrong password. Use AUTH_PASSWORD from Vercel Environment Variables." },
-        { status: 401 },
-      );
-    }
-    await createSession({
-      userId: user.id,
-      orgId: user.organizationId,
-      username: user.username,
-      displayName: user.displayName,
-    });
+    const body = (await req.json()) as { password?: string };
+    const session = await loginWithSitePassword(body.password ?? "");
+    await createSession(session);
     return NextResponse.json({ ok: true });
   } catch (err) {
+    const status =
+      err && typeof err === "object" && "status" in err ? Number((err as { status: number }).status) : 500;
+    if (status === 400 || status === 401) {
+      return NextResponse.json(
+        { error: err instanceof Error ? err.message : "Wrong password." },
+        { status },
+      );
+    }
     console.error("[login] failed", err);
-    return NextResponse.json(
-      { error: "Database not ready. Confirm DATABASE_URL (Supabase URI) and that tables exist." },
-      { status: 503 },
-    );
+    return NextResponse.json({ error: "Login failed. Try again." }, { status: 500 });
   }
 }

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { ensureAdmin } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { withDb } from "@/lib/prisma";
 import { runIngestion } from "@/lib/ingest/run";
 import { ORG_SLUG } from "@/lib/constants";
 
@@ -13,9 +13,17 @@ export async function GET(req: Request) {
   if (secret && auth !== `Bearer ${secret}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  await ensureAdmin();
-  const org = await prisma.organization.findUnique({ where: { slug: ORG_SLUG } });
-  if (!org) return NextResponse.json({ error: "Org missing" }, { status: 500 });
-  const results = await runIngestion(org.id);
-  return NextResponse.json({ ok: true, results });
+  try {
+    await ensureAdmin();
+    const org = await withDb((db) => db.organization.findUnique({ where: { slug: ORG_SLUG } }));
+    if (!org) return NextResponse.json({ error: "Org missing" }, { status: 500 });
+    const results = await runIngestion(org.id);
+    return NextResponse.json({ ok: true, results });
+  } catch (err) {
+    console.error("[cron/ingest] failed", err);
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Ingest failed" },
+      { status: 503 },
+    );
+  }
 }

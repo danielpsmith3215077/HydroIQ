@@ -1,21 +1,33 @@
-import { prisma } from "@/lib/prisma";
+import { withDb } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { LeadCard } from "@/components/lead-card";
+import { DbUnavailable } from "@/components/db-unavailable";
+import type { Lead } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 
 export default async function ForecastsPage() {
   const session = await getSession();
   if (!session) redirect("/login");
-  const leads = await prisma.lead.findMany({
-    where: {
-      organizationId: session.orgId,
-      OR: [{ variant: { in: ["predictive", "subcontract"] } }, { forecastWindow: { not: null } }],
-    },
-    orderBy: [{ score: "desc" }, { detectedAt: "desc" }],
-    take: 80,
-  });
+
+  let leads: Lead[] = [];
+  let dbError = false;
+  try {
+    leads = await withDb((db) =>
+      db.lead.findMany({
+        where: {
+          organizationId: session.orgId,
+          OR: [{ variant: { in: ["predictive", "subcontract"] } }, { forecastWindow: { not: null } }],
+        },
+        orderBy: [{ score: "desc" }, { detectedAt: "desc" }],
+        take: 80,
+      }),
+    );
+  } catch (err) {
+    console.error("[forecasts] database unavailable", err);
+    dbError = true;
+  }
 
   return (
     <div>
@@ -36,7 +48,9 @@ export default async function ForecastsPage() {
         </div>
       </div>
       <div className="mt-6 grid gap-4">
-        {leads.length === 0 ? (
+        {dbError ? (
+          <DbUnavailable />
+        ) : leads.length === 0 ? (
           <p className="rounded-2xl border border-dashed border-navy/20 bg-white px-6 py-12 text-center text-navy/60">
             Forecasts appear after the first source pull. Algorithm A tags ECHO utilities; B flags unfunded PFAS bases; C maps primes onto compliance sites.
           </p>

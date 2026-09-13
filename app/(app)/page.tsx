@@ -1,11 +1,13 @@
-import { prisma } from "@/lib/prisma";
+import { withDb } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { LeadCard } from "@/components/lead-card";
 import { RefreshSources } from "@/components/refresh-sources";
 import { AutoIngest } from "@/components/auto-ingest";
+import { DbUnavailable } from "@/components/db-unavailable";
 import { latestSourceHealth } from "@/lib/ingest/run";
 import { formatDate } from "@/lib/utils";
+import type { Lead } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 
@@ -17,34 +19,47 @@ export default async function FeedPage({
   const session = await getSession();
   if (!session) redirect("/login");
   const q = searchParams.q?.trim();
-  const leads = await prisma.lead.findMany({
-    where: {
-      organizationId: session.orgId,
-      status: { not: "contacted" },
-      ...(searchParams.source ? { source: searchParams.source } : {}),
-      ...(searchParams.variant ? { variant: searchParams.variant } : {}),
-      ...(searchParams.state ? { state: searchParams.state.toUpperCase() } : {}),
-      ...(q
-        ? {
-            OR: [
-              { facilityName: { contains: q } },
-              { city: { contains: q } },
-              { summary: { contains: q } },
-              { contaminantClass: { contains: q } },
-            ],
-          }
-        : {}),
-    },
-    orderBy: [{ score: "desc" }, { detectedAt: "desc" }],
-    take: 120,
-  });
-  const health = await latestSourceHealth(session.orgId);
+
+  let leads: Lead[] = [];
+  let health: Awaited<ReturnType<typeof latestSourceHealth>> = [];
+  let dbError = false;
+
+  try {
+    leads = await withDb((db) =>
+      db.lead.findMany({
+        where: {
+          organizationId: session.orgId,
+          status: { not: "contacted" },
+          ...(searchParams.source ? { source: searchParams.source } : {}),
+          ...(searchParams.variant ? { variant: searchParams.variant } : {}),
+          ...(searchParams.state ? { state: searchParams.state.toUpperCase() } : {}),
+          ...(q
+            ? {
+                OR: [
+                  { facilityName: { contains: q } },
+                  { city: { contains: q } },
+                  { summary: { contains: q } },
+                  { contaminantClass: { contains: q } },
+                ],
+              }
+            : {}),
+        },
+        orderBy: [{ score: "desc" }, { detectedAt: "desc" }],
+        take: 120,
+      }),
+    );
+    health = await latestSourceHealth(session.orgId);
+  } catch (err) {
+    console.error("[feed] database unavailable", err);
+    dbError = true;
+  }
+
   const failed = health.filter((h) => h.status === "error" || h.status === "empty");
   const lastOk = health.find((h) => h.status === "success");
 
   return (
     <div>
-      <AutoIngest empty={leads.length === 0} />
+      <AutoIngest empty={!dbError && leads.length === 0} />
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.22em] text-teal-800">AMFS internal</p>
@@ -53,7 +68,7 @@ export default async function FeedPage({
             Real public records only — EPA ECHO (CWA, SDWIS, RCRA), Superfund, SAM.gov / USAspending, military PFAS watchlist, e-AMLIS, and Texas/Minnesota SRF portals. Newest and highest-signal first.
           </p>
         </div>
-        <RefreshSources empty={leads.length === 0} />
+        <RefreshSources empty={!dbError && leads.length === 0} />
       </div>
 
       {failed.length && lastOk ? (
@@ -88,7 +103,9 @@ export default async function FeedPage({
         </div>
       </form>
 
-      {leads.length === 0 ? (
+      {dbError ? (
+        <DbUnavailable />
+      ) : leads.length === 0 ? (
         <div className="mt-8 rounded-2xl border border-dashed border-navy/20 bg-white px-6 py-16 text-center">
           <h2 className="font-serif text-2xl text-navy">Waiting on the first public-records pull</h2>
           <p className="mx-auto mt-2 max-w-md text-sm text-navy/65">

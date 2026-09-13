@@ -1,11 +1,15 @@
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import bcrypt from "bcryptjs";
-import { prisma } from "./prisma";
+import { withDb } from "./prisma";
 import { ORG_SLUG, SESSION_COOKIE } from "./constants";
 
 export const COOKIE = SESSION_COOKIE;
 const THIRTY_DAYS = 60 * 60 * 24 * 30;
+
+/** Stable single-tenant IDs when the DB is briefly unreachable at login time. */
+export const BOOTSTRAP_ORG_ID = process.env.BOOTSTRAP_ORG_ID ?? "cmu02vity00008ksh0yxxhewk";
+export const BOOTSTRAP_USER_ID = process.env.BOOTSTRAP_USER_ID ?? "cmu02vjer00038kshidw8ckvr";
 
 function secret() {
   const s = process.env.AUTH_SECRET;
@@ -19,6 +23,14 @@ export type Session = {
   username: string;
   displayName: string;
 };
+
+export function expectedPassword() {
+  return process.env.AUTH_PASSWORD ?? "HydroIQ2026";
+}
+
+export function expectedUsername() {
+  return (process.env.AUTH_USERNAME ?? "amfs").trim().toLowerCase();
+}
 
 export async function createSession(session: Session) {
   const token = await new SignJWT(session)
@@ -58,62 +70,110 @@ export function clearSession() {
 }
 
 export async function verifyPassword(password: string) {
-  const username = (process.env.AUTH_USERNAME ?? "amfs").trim().toLowerCase();
-  const user = await prisma.user.findUnique({ where: { username } });
-  if (!user) return null;
-  const ok = await bcrypt.compare(password, user.passwordHash);
-  if (!ok) return null;
-  await prisma.user.update({
-    where: { id: user.id },
-    data: { lastLoginAt: new Date() },
+  const username = expectedUsername();
+  return withDb(async (db) => {
+    const user = await db.user.findUnique({ where: { username } });
+    if (!user) return null;
+    const ok = await bcrypt.compare(password, user.passwordHash);
+    if (!ok) return null;
+    await db.user.update({
+      where: { id: user.id },
+      data: { lastLoginAt: new Date() },
+    });
+    return user;
   });
-  return user;
 }
 
 /** @deprecated use verifyPassword — kept for scripts */
 export async function verifyLogin(username: string, password: string) {
-  const expected = (process.env.AUTH_USERNAME ?? "amfs").trim().toLowerCase();
-  if (username.trim().toLowerCase() !== expected) return null;
+  if (username.trim().toLowerCase() !== expectedUsername()) return null;
   return verifyPassword(password);
 }
 
 export async function ensureAdmin() {
-  const username = (process.env.AUTH_USERNAME ?? "amfs").trim().toLowerCase();
-  const password = process.env.AUTH_PASSWORD ?? "HydroIQ2026";
-  const hash = await bcrypt.hash(password, 10);
+  const username = expectedUsername();
+  const password = expectedPassword();
 
-  let org = await prisma.organization.findUnique({ where: { slug: ORG_SLUG } });
-  if (!org) {
-    org = await prisma.organization.create({
-      data: {
-        slug: ORG_SLUG,
-        name: "AMFS Filtration",
-        settings: { create: {} },
-      },
-    });
-  } else if (!(await prisma.orgSettings.findUnique({ where: { organizationId: org.id } }))) {
-    await prisma.orgSettings.create({ data: { organizationId: org.id } });
-  }
-
-  const existing = await prisma.user.findUnique({ where: { username } });
-  if (!existing) {
-    await prisma.user.create({
-      data: {
-        organizationId: org.id,
-        username,
-        passwordHash: hash,
-        displayName: "AMFS Admin",
-      },
-    });
-  } else {
-    // Keep DB password in sync with AUTH_PASSWORD so Vercel env changes always work.
-    const matches = await bcrypt.compare(password, existing.passwordHash);
-    if (!matches) {
-      await prisma.user.update({
-        where: { id: existing.id },
-        data: { passwordHash: hash },
+  return withDb(async (db) => {
+    let org = await db.organization.findUnique({ where: { slug: ORG_SLUG } });
+    if (!org) {
+      org = await db.organization.create({
+        data: {
+          slug: ORG_SLUG,
+          name: "AMFS Filtration",
+          settings: { create: {} },
+        },
       });
+    } else if (!(await db.orgSettings.findUnique({ where: { organizationId: org.id } }))) {
+      await db.orgSettings.create({ data: { organizationId: org.id } });
     }
+
+    const existing = await db.user.findUnique({ where: { username } });
+    if (!existing) {
+      const hash = await bcrypt.hash(password, 10);
+      await db.user.create({
+        data: {
+          organizationId: org.id,
+          username,
+          passwordHash: hash,
+          displayName: "AMFS Admin",
+        },
+      });
+    } else {
+      const matches = await bcrypt.compare(password, existing.passwordHash);
+      if (!matches) {
+        const hash = await bcrypt.hash(password, 10);
+        await db.user.update({
+          where: { id: existing.id },
+          data: { passwordHash: hash },
+        });
+      }
+    }
+    return org;
+  });
+}
+
+/**
+ * Password-only site gate. Prefer live DB user/org IDs; if Postgres is briefly
+ * unreachable from Vercel, still issue a session with bootstrap IDs so the UI loads.
+ */
+export async function loginWithSitePassword(password: string): Promise<Session> {
+  if (!password) {
+    throw Object.assign(new Error("Enter the site password."), { status: 400 });
   }
-  return org;
+  if (password !== expectedPassword()) {
+    throw Object.assign(new Error("Wrong password."), { status: 401 });
+  }
+
+  try {
+    const org = await ensureAdmin();
+    const user = await withDb((db) =>
+      db.user.findUnique({ where: { username: expectedUsername() } }),
+    );
+    if (!user) {
+      throw Object.assign(new Error("Wrong password."), { status: 401 });
+    }
+    await withDb((db) =>
+      db.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } }),
+    ).catch(() => undefined);
+
+    return {
+      userId: user.id,
+      orgId: org.id,
+      username: user.username,
+      displayName: user.displayName,
+    };
+  } catch (err) {
+    const status = err && typeof err === "object" && "status" in err ? Number((err as { status: number }).status) : 0;
+    if (status === 400 || status === 401) throw err;
+
+    // DB unreachable — still unlock the site for the correct password.
+    console.error("[login] DB unavailable; issuing bootstrap session", err);
+    return {
+      userId: BOOTSTRAP_USER_ID,
+      orgId: BOOTSTRAP_ORG_ID,
+      username: expectedUsername(),
+      displayName: "AMFS Admin",
+    };
+  }
 }

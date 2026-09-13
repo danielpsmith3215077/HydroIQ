@@ -26,7 +26,7 @@ npx prisma generate
 if [[ "${DATABASE_URL:-}" == postgres* ]]; then
   npx prisma migrate deploy
 else
-  echo "Set DATABASE_URL (and DIRECT_URL) in .env to your Supabase URI, then run: npx prisma migrate deploy"
+  echo "Set DATABASE_URL in .env to your Supabase URI (direct / port 5432), then run: npx prisma migrate deploy"
 fi
 echo ""
 echo "Ready. Start the app: npm run dev"

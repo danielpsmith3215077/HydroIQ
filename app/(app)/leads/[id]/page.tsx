@@ -1,20 +1,46 @@
-import { prisma } from "@/lib/prisma";
+import { withDb } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { notFound, redirect } from "next/navigation";
 import { EmailPanel } from "@/components/email-panel";
 import { BidPanel } from "@/components/bid-panel";
 import { SourceBadge, VariantBadge } from "@/components/lead-badge";
+import { DbUnavailable } from "@/components/db-unavailable";
 import { formatDate, formatMoney, locationLine } from "@/lib/utils";
+import type { AuditLog, Lead } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
+
+type LeadWithLogs = Lead & { auditLogs: AuditLog[] };
 
 export default async function LeadPage({ params }: { params: { id: string } }) {
   const session = await getSession();
   if (!session) redirect("/login");
-  const lead = await prisma.lead.findFirst({
-    where: { id: params.id, organizationId: session.orgId },
-    include: { auditLogs: { orderBy: { createdAt: "desc" }, take: 12 } },
-  });
+
+  let lead: LeadWithLogs | null = null;
+  let dbError = false;
+  try {
+    lead = await withDb((db) =>
+      db.lead.findFirst({
+        where: { id: params.id, organizationId: session.orgId },
+        include: { auditLogs: { orderBy: { createdAt: "desc" }, take: 12 } },
+      }),
+    );
+  } catch (err) {
+    console.error("[lead] database unavailable", err);
+    dbError = true;
+  }
+
+  if (dbError) {
+    return (
+      <div className="space-y-5">
+        <a href="/" className="text-sm font-semibold text-teal-800">
+          ← Lead feed
+        </a>
+        <DbUnavailable />
+      </div>
+    );
+  }
+
   if (!lead) notFound();
   const extra = (JSON.parse(lead.badgesJson || "[]") as string[]).filter((b) => b !== lead.variant);
 

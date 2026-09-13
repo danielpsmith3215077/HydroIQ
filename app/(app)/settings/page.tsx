@@ -1,23 +1,46 @@
-import { prisma } from "@/lib/prisma";
+import { withDb } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { SOURCE_LABELS } from "@/lib/constants";
 import { latestSourceHealth } from "@/lib/ingest/run";
 import { formatDate } from "@/lib/utils";
 import { RefreshSources } from "@/components/refresh-sources";
+import { DbUnavailable } from "@/components/db-unavailable";
 
 export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
   const session = await getSession();
   if (!session) redirect("/login");
-  const health = await latestSourceHealth(session.orgId);
-  const counts = await prisma.lead.groupBy({
-    by: ["source"],
-    where: { organizationId: session.orgId },
-    _count: { _all: true },
-  });
-  const settings = await prisma.orgSettings.findUnique({ where: { organizationId: session.orgId } });
+
+  let health: Awaited<ReturnType<typeof latestSourceHealth>> = [];
+  let counts: { source: string; _count: { _all: number } }[] = [];
+  let settings: {
+    emailFromName: string | null;
+    emailPhone: string | null;
+    solutionUrl: string | null;
+  } | null = null;
+  let dbError = false;
+
+  try {
+    health = await latestSourceHealth(session.orgId);
+    const data = await withDb(async (db) => {
+      const [groupCounts, orgSettings] = await Promise.all([
+        db.lead.groupBy({
+          by: ["source"],
+          where: { organizationId: session.orgId },
+          _count: { _all: true },
+        }),
+        db.orgSettings.findUnique({ where: { organizationId: session.orgId } }),
+      ]);
+      return { groupCounts, orgSettings };
+    });
+    counts = data.groupCounts;
+    settings = data.orgSettings;
+  } catch (err) {
+    console.error("[settings] database unavailable", err);
+    dbError = true;
+  }
 
   return (
     <div className="space-y-6">
@@ -30,23 +53,30 @@ export default async function SettingsPage() {
         </div>
         <RefreshSources empty={false} />
       </div>
+
+      {dbError ? <DbUnavailable /> : null}
+
       <section className="rounded-2xl border border-navy/10 bg-white p-5">
         <h2 className="font-serif text-xl">Outreach identity</h2>
         <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
           <div>
             <dt className="text-navy/45">From</dt>
-            <dd>{settings?.emailFromName}</dd>
+            <dd>{settings?.emailFromName ?? "—"}</dd>
           </div>
           <div>
             <dt className="text-navy/45">Phone</dt>
-            <dd>{settings?.emailPhone}</dd>
+            <dd>{settings?.emailPhone ?? "—"}</dd>
           </div>
           <div>
             <dt className="text-navy/45">Trailer page</dt>
             <dd>
-              <a className="text-teal-800 underline" href={settings?.solutionUrl}>
-                {settings?.solutionUrl}
-              </a>
+              {settings?.solutionUrl ? (
+                <a className="text-teal-800 underline" href={settings.solutionUrl}>
+                  {settings.solutionUrl}
+                </a>
+              ) : (
+                "—"
+              )}
             </dd>
           </div>
         </dl>
@@ -58,7 +88,7 @@ export default async function SettingsPage() {
         </p>
         <ul className="mt-4 divide-y divide-navy/10">
           {health.length === 0 ? (
-            <li className="py-3 text-sm text-navy/55">No pulls yet.</li>
+            <li className="py-3 text-sm text-navy/55">{dbError ? "Source status unavailable right now." : "No pulls yet."}</li>
           ) : (
             health.map((run) => (
               <li key={run.id} className="flex flex-wrap items-center justify-between gap-2 py-3 text-sm">
@@ -74,12 +104,16 @@ export default async function SettingsPage() {
       <section className="rounded-2xl border border-navy/10 bg-white p-5">
         <h2 className="font-serif text-xl">Leads by source</h2>
         <ul className="mt-3 grid gap-2 sm:grid-cols-2">
-          {counts.map((c) => (
-            <li key={c.source} className="flex justify-between rounded-lg bg-sand px-3 py-2 text-sm">
-              <span>{SOURCE_LABELS[c.source] ?? c.source}</span>
-              <span className="font-semibold">{c._count._all}</span>
-            </li>
-          ))}
+          {counts.length === 0 ? (
+            <li className="text-sm text-navy/55">{dbError ? "Counts unavailable right now." : "No leads yet."}</li>
+          ) : (
+            counts.map((c) => (
+              <li key={c.source} className="flex justify-between rounded-lg bg-sand px-3 py-2 text-sm">
+                <span>{SOURCE_LABELS[c.source] ?? c.source}</span>
+                <span className="font-semibold">{c._count._all}</span>
+              </li>
+            ))
+          )}
         </ul>
       </section>
     </div>

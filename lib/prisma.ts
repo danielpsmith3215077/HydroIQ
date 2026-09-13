@@ -1,39 +1,77 @@
 import { PrismaClient } from "@prisma/client";
+import { resolveDatabaseUrls } from "./db-url";
 
-/**
- * Vercel (and some CI) often cannot open Supabase direct db.*:5432.
- * Rewrite to the Supabase pooler (us-west-2) which is reachable over :6543.
- */
-export function resolveDatabaseUrl(raw = process.env.DATABASE_URL ?? ""): string {
-  if (!raw) return raw;
-  try {
-    const normalized = raw.replace(/^postgresql:/i, "http:").replace(/^postgres:/i, "http:");
-    const u = new URL(normalized);
-    const host = u.hostname;
-    const direct = /^db\.([a-z0-9]+)\.supabase\.co$/i.exec(host);
-    if (!direct) return raw;
-    const ref = direct[1];
-    const password = decodeURIComponent(u.password || "");
-    if (!password) return raw;
-    const user = `postgres.${ref}`;
-    return `postgresql://${user}:${encodeURIComponent(password)}@aws-0-us-west-2.pooler.supabase.com:6543/postgres?pgbouncer=true&sslmode=require`;
-  } catch {
-    return raw;
-  }
-}
+const globalForPrisma = globalThis as unknown as {
+  prisma?: PrismaClient;
+  prismaUrl?: string;
+};
 
-const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
-
-function makeClient() {
-  const url = resolveDatabaseUrl();
-  if (url && url !== process.env.DATABASE_URL) {
-    process.env.DATABASE_URL = url;
-  }
+function makeClient(url: string) {
   return new PrismaClient({
+    datasources: { db: { url } },
     log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
   });
 }
 
-export const prisma = globalForPrisma.prisma ?? makeClient();
+function activeClient(): PrismaClient {
+  const { primary, fallbacks } = resolveDatabaseUrls();
+  const url = primary || process.env.DATABASE_URL || "";
+  if (!url) return globalForPrisma.prisma ?? makeClient("");
 
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+  if (globalForPrisma.prisma && globalForPrisma.prismaUrl === url) {
+    return globalForPrisma.prisma;
+  }
+
+  if (globalForPrisma.prisma) {
+    void globalForPrisma.prisma.$disconnect().catch(() => undefined);
+  }
+
+  // Prefer mutating env so any nested Prisma usage sees the pooler URL too.
+  process.env.DATABASE_URL = url;
+  if (fallbacks[0]) process.env.DATABASE_URL_SESSION = fallbacks[0];
+
+  const client = makeClient(url);
+  globalForPrisma.prisma = client;
+  globalForPrisma.prismaUrl = url;
+  return client;
+}
+
+export const prisma = new Proxy({} as PrismaClient, {
+  get(_target, prop, receiver) {
+    const client = activeClient();
+    const value = Reflect.get(client, prop, receiver);
+    return typeof value === "function" ? value.bind(client) : value;
+  },
+});
+
+/** Run a DB operation with one reconnect + session-pooler fallback. */
+export async function withDb<T>(fn: (db: PrismaClient) => Promise<T>): Promise<T> {
+  const { primary, fallbacks } = resolveDatabaseUrls();
+  const urls = [primary, ...fallbacks].filter(Boolean);
+  let lastErr: unknown;
+
+  for (let i = 0; i < urls.length; i++) {
+    const url = urls[i]!;
+    try {
+      if (globalForPrisma.prismaUrl !== url) {
+        if (globalForPrisma.prisma) {
+          await globalForPrisma.prisma.$disconnect().catch(() => undefined);
+        }
+        process.env.DATABASE_URL = url;
+        globalForPrisma.prisma = makeClient(url);
+        globalForPrisma.prismaUrl = url;
+      }
+      const db = globalForPrisma.prisma!;
+      await db.$connect();
+      return await fn(db);
+    } catch (err) {
+      lastErr = err;
+      if (globalForPrisma.prisma) {
+        await globalForPrisma.prisma.$disconnect().catch(() => undefined);
+        globalForPrisma.prisma = undefined;
+        globalForPrisma.prismaUrl = undefined;
+      }
+    }
+  }
+  throw lastErr instanceof Error ? lastErr : new Error("Database unavailable");
+}

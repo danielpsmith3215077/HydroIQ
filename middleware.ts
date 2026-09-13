@@ -3,11 +3,13 @@ import type { NextRequest } from "next/server";
 import { jwtVerify } from "jose";
 import { SESSION_COOKIE } from "@/lib/constants";
 
-const PUBLIC = ["/login", "/api/auth/login", "/api/cron/ingest"];
+const PUBLIC = ["/login", "/api/auth/login", "/api/health", "/api/cron/ingest"];
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
-  if (PUBLIC.some((p) => pathname === p || pathname.startsWith("/api/cron"))) {
+  if (
+    PUBLIC.some((p) => pathname === p || pathname.startsWith("/api/cron") || pathname.startsWith("/api/health"))
+  ) {
     return NextResponse.next();
   }
   const token = req.cookies.get(SESSION_COOKIE)?.value;
