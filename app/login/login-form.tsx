@@ -23,7 +23,8 @@ export default function LoginForm() {
       body: JSON.stringify({ username, password }),
     });
     if (!res.ok) {
-      setError("That username or password did not match.");
+      const data = (await res.json().catch(() => null)) as { error?: string } | null;
+      setError(data?.error ?? "That username or password did not match.");
       setBusy(false);
       return;
     }

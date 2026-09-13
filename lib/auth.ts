@@ -74,6 +74,7 @@ export async function verifyLogin(username: string, password: string) {
 export async function ensureAdmin() {
   const username = (process.env.AUTH_USERNAME ?? "amfs").trim().toLowerCase();
   const password = process.env.AUTH_PASSWORD ?? "HydroIQ2026";
+  const hash = await bcrypt.hash(password, 10);
 
   let org = await prisma.organization.findUnique({ where: { slug: ORG_SLUG } });
   if (!org) {
@@ -90,7 +91,6 @@ export async function ensureAdmin() {
 
   const existing = await prisma.user.findUnique({ where: { username } });
   if (!existing) {
-    const hash = await bcrypt.hash(password, 10);
     await prisma.user.create({
       data: {
         organizationId: org.id,
@@ -99,6 +99,15 @@ export async function ensureAdmin() {
         displayName: "AMFS Admin",
       },
     });
+  } else {
+    // Keep DB password in sync with AUTH_PASSWORD so Vercel env changes always work.
+    const matches = await bcrypt.compare(password, existing.passwordHash);
+    if (!matches) {
+      await prisma.user.update({
+        where: { id: existing.id },
+        data: { passwordHash: hash },
+      });
+    }
   }
   return org;
 }
