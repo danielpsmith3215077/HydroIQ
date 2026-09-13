@@ -57,10 +57,9 @@ export function clearSession() {
   cookies().set(COOKIE, "", { httpOnly: true, path: "/", maxAge: 0 });
 }
 
-export async function verifyLogin(username: string, password: string) {
-  const user = await prisma.user.findUnique({
-    where: { username: username.trim().toLowerCase() },
-  });
+export async function verifyPassword(password: string) {
+  const username = (process.env.AUTH_USERNAME ?? "amfs").trim().toLowerCase();
+  const user = await prisma.user.findUnique({ where: { username } });
   if (!user) return null;
   const ok = await bcrypt.compare(password, user.passwordHash);
   if (!ok) return null;
@@ -69,6 +68,13 @@ export async function verifyLogin(username: string, password: string) {
     data: { lastLoginAt: new Date() },
   });
   return user;
+}
+
+/** @deprecated use verifyPassword — kept for scripts */
+export async function verifyLogin(username: string, password: string) {
+  const expected = (process.env.AUTH_USERNAME ?? "amfs").trim().toLowerCase();
+  if (username.trim().toLowerCase() !== expected) return null;
+  return verifyPassword(password);
 }
 
 export async function ensureAdmin() {

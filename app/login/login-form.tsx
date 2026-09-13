@@ -8,7 +8,6 @@ import { Input, Label } from "@/components/ui/input";
 export default function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
-  const [username, setUsername] = useState("amfs");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -20,11 +19,11 @@ export default function LoginForm() {
     const res = await fetch("/api/auth/login", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ username, password }),
+      body: JSON.stringify({ password }),
     });
     if (!res.ok) {
       const data = (await res.json().catch(() => null)) as { error?: string } | null;
-      setError(data?.error ?? "That username or password did not match.");
+      setError(data?.error ?? "That password did not match.");
       setBusy(false);
       return;
     }
@@ -38,25 +37,22 @@ export default function LoginForm() {
         <p className="text-xs font-bold uppercase tracking-[0.22em] text-teal-800">AMFS Filtration</p>
         <h1 className="mt-2 font-serif text-4xl text-navy">HydroIQ</h1>
         <p className="mt-2 text-sm leading-relaxed text-navy/70">
-          Internal lead intelligence for mobile nanofiltration. One admin. Stays signed in for 30 days.
+          Internal lead intelligence for mobile nanofiltration. Enter the site password. Stays signed in for 30 days.
         </p>
         <form className="mt-6 space-y-3" onSubmit={onSubmit}>
           <div>
-            <Label htmlFor="username">Username</Label>
-            <Input id="username" autoComplete="username" value={username} onChange={(e) => setUsername(e.target.value)} />
-          </div>
-          <div>
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="password">Site password</Label>
             <Input
               id="password"
               type="password"
               autoComplete="current-password"
+              autoFocus
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
           </div>
           {error ? <p className="text-sm text-red-700">{error}</p> : null}
-          <Button className="w-full" type="submit" disabled={busy}>
+          <Button className="w-full" type="submit" disabled={busy || !password}>
             {busy ? "Signing in…" : "Open the lead feed"}
           </Button>
         </form>

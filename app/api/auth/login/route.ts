@@ -1,17 +1,18 @@
 import { NextResponse } from "next/server";
-import { createSession, ensureAdmin, verifyLogin } from "@/lib/auth";
+import { createSession, ensureAdmin, verifyPassword } from "@/lib/auth";
 
 export async function POST(req: Request) {
   try {
     await ensureAdmin();
-    const { username, password } = (await req.json()) as { username?: string; password?: string };
-    if (!username || !password) {
-      return NextResponse.json({ error: "Enter username and password." }, { status: 400 });
+    const body = (await req.json()) as { password?: string; username?: string };
+    const password = body.password;
+    if (!password) {
+      return NextResponse.json({ error: "Enter the site password." }, { status: 400 });
     }
-    const user = await verifyLogin(username, password);
+    const user = await verifyPassword(password);
     if (!user) {
       return NextResponse.json(
-        { error: "Invalid username or password. Use AUTH_USERNAME / AUTH_PASSWORD from Vercel." },
+        { error: "Wrong password. Use AUTH_PASSWORD from Vercel Environment Variables." },
         { status: 401 },
       );
     }
